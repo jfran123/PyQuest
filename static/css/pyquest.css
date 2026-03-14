@@ -1,11 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PyQuest | Level Up Your Python</title>
- 
-<style>
 :root{
   --bg-dark:#0f1020;
   --purple:#8b5cf6;
@@ -181,56 +173,94 @@ footer{
   padding:40px;
   opacity:.6;
 }
-</style>
-</head>
- 
-<body>
- 
-<div class="blob blob1"></div>
-<div class="blob blob2"></div>
- 
-<nav>
-  <h1>PyQuest</h1>
-  <div>
-    <a href="#">Features</a>
-    <a href="#">Login</a>
-    <a href="#">Sign Up</a>
-  </div>
-</nav>
- 
-<section class="hero">
-  <h2>Learn Python. Earn XP. Unlock Achievements.</h2>
-  <p>
-    PyQuest gamifies learning Python with beginner coding challenges.
-    Complete missions, earn points, level up, and build real coding skills.
-  </p>
- 
-  <div>
-    <button class="btn primary">Start Your Mission</button>
-    <button class="btn secondary">View Challenges</button>
-  </div>
-</section>
- 
-<section class="features">
-  <div class="card">
-    <h3>⚡ XP & Levels</h3>
-    <p>Earn experience points for every coding challenge you complete.</p>
-  </div>
- 
-  <div class="card">
-    <h3>🏆 Achievements</h3>
-    <p>Unlock badges for streaks, milestones, and mastering Python topics.</p>
-  </div>
- 
-  <div class="card">
-    <h3>🔥 Daily Missions</h3>
-    <p>Stay consistent with daily coding tasks and maintain your streak.</p>
-  </div>
-</section>
- 
-<footer>
-  © 2026 PyQuest — Cyber Learning Arcade
-</footer>
- 
-</body>
-</html>
+
+/* Login and Registration */
+
+/* Auth Section */
+.auth-container{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:85vh;
+  padding:40px;
+}
+
+.auth-box{
+  background:rgba(255,255,255,.05);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:40px;
+  width:380px;
+  border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 0 25px rgba(139,92,246,.3);
+  transition:.4s;
+}
+
+.auth-box h2{
+  text-align:center;
+  margin-bottom:25px;
+  background:linear-gradient(90deg,var(--purple),var(--coral),var(--blue));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.input-group{
+  margin-bottom:18px;
+}
+
+.input-group label{
+  display:block;
+  margin-bottom:6px;
+  font-size:.9rem;
+  opacity:.8;
+}
+
+.input-group input{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.05);
+  color:var(--text);
+  outline:none;
+  transition:.3s;
+}
+
+.input-group input:focus{
+  border-color:var(--purple);
+  box-shadow:0 0 10px rgba(139,92,246,.5);
+}
+
+.toggle-text{
+  text-align:center;
+  margin-top:15px;
+  font-size:.9rem;
+}
+
+.toggle-text span{
+  color:var(--blue);
+  cursor:pointer;
+  font-weight:600;
+}
+
+/* Dashboard Section */
+.dashboard{
+  text-align:center;
+  padding:80px 20px;
+}
+
+.dashboard h2{
+  font-size:2.5rem;
+  margin-bottom:15px;
+  background:linear-gradient(90deg,var(--purple),var(--coral),var(--blue));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.stats{
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  margin-top:50px;
+  flex-wrap:wrap;
+}

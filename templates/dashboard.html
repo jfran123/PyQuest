@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | PyQuest</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
+
+</head>
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<nav>
+  <h1>PyQuest</h1>
+  <div>
+    <a href="/">Home</a>
+    <a href="/logout">Logout</a>
+  </div>
+</nav>
+
+<section class="dashboard">
+  <h2>Welcome Back, {{ name }} 🎮</h2>
+  <p>Ready to continue your Python journey?</p>
+
+  <div class="stats">
+    <div class="card">
+      <h3>⚡ XP Points</h3>
+      <p>120 XP</p>
+    </div>
+
+    <div class="card">
+      <h3>🏆 Achievements</h3>
+      <p>5 Badges</p>
+    </div>
+
+    <div class="card">
+      <h3>🔥 Current Level</h3>
+      <p>Level 3</p>
+    </div>
+  </div>
+
+  <button class="btn">Start New Challenge</button>
+</section>
+
+<footer>
+  © 2026 PyQuest — Cyber Learning Arcade
+</footer>
+
+</body>
+</html>
