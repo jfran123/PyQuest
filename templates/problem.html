@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>PyQuest | Level Up Your Python</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+<script>
+var SampleInputData = "{{example[0]}}";
+
+
+function syncCode(){
+
+document.getElementById("code").value = editor.getValue();
+
+}
+
+function runCode(){
+fetch("/run",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+code: editor.getValue(),
+input: SampleInputData
+})
+})
+
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("output-box").textContent=data.output
+})
+
+}
+
+</script>
+</head>
+
+<body>
+<nav>
+  <h1>PyQuest</h1>
+  <div>
+    <a href="/">Home</a>
+    <a href="/logout">Logout</a>
+  </div>
+</nav>
+<h3>{{problem[1]}}</h3>
+
+<div class="container">
+
+<!-- LEFT SIDE : PROBLEM -->
+
+<div class="problem-section">
+
+<h3>Description</h3>
+
+<p>{{problem[2]}}</p><br>
+<h4>Example Input</h4>
+<pre>{{example[0]}}</pre>
+
+<h4>Example Output</h4>
+<pre>{{example[1]}}</pre>
+</div>
+
+
+<!-- RIGHT SIDE : CODE EDITOR -->
+
+<div class="editor-section">
+
+<form action="/submit/{{problem[0]}}" method="POST" onsubmit="syncCode()">
+
+<textarea id="code" name="code" style="width: 100%; height: 200px;"></textarea>
+
+<br>
+
+<button type="button" onclick="runCode()" class="btn primary">Run Code</button>
+
+<button type="submit" class="btn secondary">Submit</button>
+
+</form>
+
+<h3>Output</h3>
+
+<pre id="output-box"></pre>
+
+</div>
+
+</div>
+
+
+<script>
+    var editor = CodeMirror.fromTextArea(
+            document.getElementById("code"),
+            {
+            mode:"python",
+            lineNumbers:true,
+            indentUnit:4,
+            lineWrapping:true
+            }
+            );
+</script>
+</body>
+</html>

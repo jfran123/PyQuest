@@ -21,6 +21,7 @@ function toggleForm(){
 }
 function setError(message) {
   const errorMsg = document.getElementById("error_msg");
+  if (!errorMsg) return; // If error message element doesn't exist, do nothing
   errorMsg.textContent = message;
 }
 </script>
@@ -79,7 +80,13 @@ function setError(message) {
         <label>Email</label>
         <input type="email" name="email" required>
       </div>
-
+      <div class="input-group">
+        <label>Role</label>
+        <select name="role" >
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+      </div>
       <div class="input-group">
         <label>Password</label>
         <input type="password" name="password" required>
