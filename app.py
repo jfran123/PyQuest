@@ -48,7 +48,7 @@ def register():
 
         c.execute(
             "INSERT INTO users(fullname,email,password,role) VALUES(?,?,?,?)",
-            (fullname,email,password,role)
+            (fullname.lower(),email.lower(),password,role)
         )
 
         conn.commit()
@@ -71,7 +71,7 @@ def login():
 
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
+    c.execute("SELECT * FROM users WHERE email=? OR fullname=? AND password=?", (email.lower(), email.lower(), password))
     user = c.fetchone()
     conn.close()
 
@@ -103,9 +103,47 @@ def dashboard():
 # Admin Dashboard
 @app.route("/admin")
 def admin():
-    if "user" in session and session["user"].lower() == "admin":
-        return render_template("admin.html", name=session["user"])
+    admin_name = session["user"].capitalize()
+    if "user" in session and session["role"].lower() == "admin":
+        return render_template("admin.html", name=admin_name)
     return redirect("/")
+# Admin Users View
+@app.route("/admin/users")
+def admin_users():
+
+    if session["role"] != "admin":
+        return "Unauthorized"
+
+    conn = db()
+    c = conn.cursor()
+
+    c.execute("SELECT id,fullname,role FROM users")
+    users = c.fetchall()
+
+    conn.close()
+
+    return render_template("admin_users.html", users=users)
+# Update User Role
+@app.route("/admin/update_role/<int:uid>", methods=["POST"])
+def update_role(uid):
+
+    if session["role"] != "admin":
+        return "Unauthorized"
+
+    new_role = request.form["role"]
+
+    conn = db()
+    c = conn.cursor()
+
+    c.execute(
+    "UPDATE users SET role=? WHERE id=?",
+    (new_role, uid)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin/users")
 
 # Teacher Dashboard
 @app.route("/teacher")
@@ -271,6 +309,59 @@ def leaderboard():
     conn.close()
 
     return render_template("leaderboard.html", users=users)
+# Progress Page
+@app.route("/progress")
+def progress():
+
+    if "user" not in session:
+        return redirect("/")
+
+    conn = sqlite3.connect("database.db")
+    c = conn.cursor()
+
+    # total submissions
+    c.execute(
+        "SELECT COUNT(*) FROM submissions WHERE user=?",
+        (session["user"],)
+    )
+    total_submissions = c.fetchone()[0]
+
+    # solved problems
+    c.execute(
+        "SELECT COUNT(DISTINCT problem_id) FROM submissions WHERE user=? AND result='Correct'",
+        (session["user"],)
+    )
+    solved = c.fetchone()[0]
+
+    # total problems
+    c.execute("SELECT COUNT(*) FROM problems")
+    total_problems = c.fetchone()[0]
+
+    success_rate = 0
+    if total_submissions > 0:
+        success_rate = round((solved / total_submissions) * 100, 2)
+
+    # solved list
+    c.execute("""
+        SELECT problems.title
+        FROM submissions
+        JOIN problems ON submissions.problem_id = problems.id
+        WHERE submissions.user=? AND submissions.result='Correct'
+        GROUP BY problems.title
+    """, (session["user"],))
+
+    solved_list = c.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "progress.html",
+        solved=solved,
+        total_problems=total_problems,
+        total_submissions=total_submissions,
+        success_rate=success_rate,
+        solved_list=solved_list
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
