@@ -19,21 +19,17 @@
     <a href="/logout">Logout</a>
   </div>
 </nav>
-
 <section class="dashboard">
   <h2>Your Challenges</h2>
-
 {% for p in problems %}
 
-<div class="problem-box">
-
-<h3>{{p[0] }} : {{p[1] }}</h3>
-<p>{{ p[2][:100] }}...</p>
-
-<a href="/problem/{{ p[0] }}"><br>
+<div class="problem-card">
+<p>{{p[0] }} : {{p[1] }} :
+{{ p[2][:100] }}...
+<a href="/problem/{{ p[0] }}">
 <button class="btn primary">Solve</button>
 </a>
-
+</p>
 </div>
 
 {% endfor %}
@@ -42,6 +38,5 @@
 <footer>
   © 2026 PyQuest — Cyber Learning Arcade
 </footer>
-
 </body>
 </html>

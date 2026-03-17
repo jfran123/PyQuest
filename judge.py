@@ -15,7 +15,7 @@ def run_code(user_code, input_data=""):
         # run the code with timeout
         result = subprocess.run(
             ["python", temp_filename],
-            input=input_data,
+            input=input_data+ "\n",
             capture_output=True,
             text=True,
             timeout=2
