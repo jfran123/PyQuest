@@ -20,10 +20,12 @@
   </div>
 </nav>
 
-section class="dashboard">
+<section class="dashboard">
   <h2>Leaderboard</h2>
+<div class="table-container">
 
-<table>
+<table class="styled-table">
+
 
 <tr>
 <th>Rank</th>
@@ -41,7 +43,12 @@ section class="dashboard">
 
 {% endfor %}
 
-</table>
+</table></div>
+{% if session.get("role") == "admin" %}
+<a href="/admin"><button class="btn secondary">Back to Dashboard</button></a>
+{% else %}
+<a href="/teacher"><button class="btn secondary">Back to Progress</button></a>
+{% endif %}
 </section>
 
 <footer>

@@ -19,6 +19,19 @@
     <a href="/logout">Logout</a>
   </div>
 </nav>
+ <!-- Display flashed messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Your main content block -->
+    {% block content %}{% endblock %}
 
 <section class="dashboard">
   <h2>Welcome Back, {{ name }} 🎮</h2>

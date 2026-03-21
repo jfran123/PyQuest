@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | PyQuest</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
+
+</head>
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<nav>
+  <h1>PyQuest</h1>
+  <div>
+    <a href="/">Home</a>
+    <a href="/logout">Logout</a>
+  </div>
+</nav>
+<section class="dashboard">
+     <h2>Manage Problems</h2><br>
+<div class="table-container">
+   
+<table class="styled-table" style="width:70%;">
+
+<thead>
+<tr>
+<th>No.</th>
+<th>Title</th>
+<th>Description</th>
+<th>Difficulty</th>
+<th>Actions</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for p in problems %}
+<tr>
+
+<form method="POST" action="/teacher/update_problem/{{p[0]}}">
+
+<td>{{ loop.index }}</td>
+
+<td><div class="input-group">
+<input type="text" name="title" value="{{p[1]}}"></div>
+</td>
+
+<td><div class="input-group">
+<textarea name="description" style="width: 100%;">{{p[2]}}</textarea></div>
+</td>
+
+<td><div class="input-group">
+<select name="difficulty">
+<option value="0" {% if p[3]==0 %}selected{% endif %}>Easy</option>
+<option value="1" {% if p[3]==1 %}selected{% endif %}>Medium</option>
+<option value="2" {% if p[3]==2 %}selected{% endif %}>Hard</option>
+</select></div>
+</td>
+
+<td>
+<button type="submit" class="btn primary">Update</button>
+<a href="/teacher/delete_problem/{{p[0]}}"><button type="button" class="btn primary">Delete</button></a>
+<!-- <a href="/teacher/testcases/{{p[0]}}" class="btn-update">Test Cases</a> -->
+</td>
+
+</form>
+
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+<!-- Display flashed messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+</section>
+<footer>
+  © 2026 PyQuest — Cyber Learning Arcade
+</footer>
+
+</body>
+</html>

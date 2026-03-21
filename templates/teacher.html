@@ -22,8 +22,20 @@
 
 <section class="dashboard">
   <h2>Welcome {{ name }}</h2>
-<a href="{{ url_for('teacher_problems') }}">
-  <button class="btn primary">Add Problems</button></a>
+    <p>Here's your teacher dashboard. Manage problems, view stats, and oversee the PyQuest universe.</p>
+  <div class="stats">
+    <div class="card">
+      <a href="{{ url_for('teacher_problems') }}" style="text-decoration: none;"><h3>⚡ Add new Challenge</h3></a>
+    </div>
+
+    <div class="card">
+      <a href="/leaderboard" style="text-decoration: none;"><h3>🏆 Leader Board</h3></a>    
+    </div>
+
+    <div class="card">
+     <a href="{{ url_for('manage_problems') }}" style="text-decoration: none;"><h3>🔥 Edit Problems</h3></a>    
+    </div>
+  </div>
 </section>
 
 <footer>

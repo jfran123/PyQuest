@@ -15,7 +15,7 @@ def run_code(user_code, input_data=""):
         # run the code with timeout
         result = subprocess.run(
             ["python", temp_filename],
-            input=input_data+ "\n",
+            input=input_data.strip() + "\n",
             capture_output=True,
             text=True,
             timeout=2
@@ -25,7 +25,7 @@ def run_code(user_code, input_data=""):
 
         os.remove(temp_filename)
 
-        return output
+        return output if result.stdout else result.stderr.strip()
 
     except subprocess.TimeoutExpired:
         return "Time Limit Exceeded"

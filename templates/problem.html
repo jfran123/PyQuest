@@ -17,8 +17,12 @@ function syncCode(){
 document.getElementById("code").value = editor.getValue();
 
 }
-
+function backToDashboard(){
+window.location.href="/dashboard";
+}
 function runCode(){
+let input_data = document.getElementById("user-input").value;
+
 fetch("/run",{
 method:"POST",
 headers:{
@@ -26,7 +30,7 @@ headers:{
 },
 body:JSON.stringify({
 code: editor.getValue(),
-input: SampleInputData
+input: input_data
 })
 })
 
@@ -73,13 +77,14 @@ document.getElementById("output-box").textContent=data.output
 <form action="/submit/{{problem[0]}}" method="POST" onsubmit="syncCode()">
 
 <textarea id="code" name="code" style="width: 100%; height: 200px;"></textarea>
-
+<h3>Custom Input</h3>
+<textarea id="user-input"></textarea>
 <br>
 
 <button type="button" onclick="runCode()" class="btn primary">Run Code</button>
 
 <button type="submit" class="btn secondary">Submit</button>
-
+<a href="/dashboard"><button type="button" onclick="backToDashboard()" class="btn secondary">Back to Dashboard</button></a>
 </form>
 
 <h3>Output</h3>
