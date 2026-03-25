@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyQuest | Level Up Your Python</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
+<script>
+function toggleForm(){
+  const login = document.getElementById("loginForm");
+  const register = document.getElementById("registerForm");
+  const errorMsg = document.getElementById("error_msg");
+  if(login.style.display === "none"){
+    login.style.display = "block";
+    register.style.display = "none";
+  } else {
+    login.style.display = "none";
+    register.style.display = "block";
+    setError(""); // clear error
+  }
+}
+function setError(message) {
+  const errorMsg = document.getElementById("error_msg");
+  if (!errorMsg) return; // If error message element doesn't exist, do nothing
+  errorMsg.textContent = message;
+}
+</script>
+</head>
+ 
+<body>
+ 
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+ 
+<nav>
+   <h1><a href="/">PyQuest</a></h1>
+  <div>
+    <a href="#">Features</a>
+  </div>
+</nav>
+ 
+<section class="auth-container">
+  <div class="auth-box">
+
+    <!-- Login Form -->
+    <form action="/login" method="POST" id="loginForm">
+      <h2>Login to PyQuest</h2>
+ 
+      <div class="input-group">
+        <label>Email / User Name</label>
+        <input type="text" name="email" required>
+      </div>
+
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" name="password" required>
+      </div>
+
+      <button type="submit" class="btn primary" style="width:100%;">Login</button>
+
+      <div class="toggle-text">
+        Don't have an account? 
+        <span onclick="toggleForm()">Register</span>
+      </div>
+      {% if error %}
+    <p id="error_msg" style="color:red;">{{ error }}</p>
+{% endif %}
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" style="display:none;" action="/register" method="POST">
+      <h2>Create Account</h2>
+
+      <div class="input-group">
+        <label>User Name</label>
+       <input type="text" name="fullname" required>
+      </div>
+
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="input-group">
+        <label>Role</label>
+        <select name="role" >
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" name="password" required>
+      </div>
+
+      <div class="input-group">
+        <label>Confirm Password</label>
+        <input type="password" required>
+      </div>
+
+      <button type="submit" class="btn primary" style="width:100%;">Register</button>
+
+      <div class="toggle-text">
+        Already have an account? 
+        <span onclick="toggleForm()">Login</span>
+      </div>
+    </form>
+
+  </div>
+</section>
+ 
+<footer>
+  © 2026 PyQuest — Cyber Learning Arcade
+</footer>
+ 
+</body>
+</html>

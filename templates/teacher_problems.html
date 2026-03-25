@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | PyQuest</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
+
+</head>
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<nav>
+   <a href="/"><h1>PyQuest</h1></a>
+  <div>
+       <a href="/logout">Logout</a>
+  </div>
+</nav>
+
+<section class="auth-container">
+  <div class="auth-box">
+<h2>Add Coding Problem</h2>
+
+<form method="POST" action="/add_problem">
+
+<div class="input-group">
+        <label>Title</label>
+<input type="text" name="title">
+</div>
+<div class="input-group">
+        <label>Description</label>
+        <textarea name="description" style="width:100%; height:100px;"></textarea>
+</div>
+<div class="input-group">
+        <label>Level</label>
+        <select name="level" required default="0">
+          <option value="0">Beginner</option>
+          <option value="1">Intermediate</option>
+          <option value="2">Advanced</option>
+        </select>
+      </div>
+<div class="input-group">
+        <label>Test Case Input</label>
+        <input type="text" name="input" required>
+</div>
+<div class="input-group">
+        <label>Expected Output</label>
+        <input type="text" name="output" required>
+</div>
+<button type="submit" class="btn primary" style="width:50%;">Save</button>
+<a href="/teacher"><button type="button" class="btn secondary">Back</button></a>
+</form>
+</div>
+</section>
+
+<footer>
+  © 2026 PyQuest — Cyber Learning Arcade
+</footer>
+
+</body>
+</html>
