@@ -59,6 +59,7 @@ nav{
   padding:20px 60px;
   backdrop-filter:blur(10px);
   background:rgba(15,16,32,.6);
+  position: sticky;top: 0;z-index: 1;
 }
  
 nav h1{
@@ -246,7 +247,7 @@ footer{
 /* Dashboard Section */
 .dashboard{
   text-align:center;
-  padding:80px 20px;
+  padding:20px 20px;
 }
 
 .dashboard h2{
@@ -356,12 +357,16 @@ margin-top:10px;
 .table-container{
 margin-top:20px;
 display: flex;
+max-height: 300px;   /* vertical scroll */
+overflow-y: auto;
+overflow-x: auto;
 justify-content: center;
 }
 
 .styled-table{
-width: 40%;
+width: 100%;
 border-collapse:collapse;
+
 }
 
 .styled-table th,
@@ -369,6 +374,12 @@ border-collapse:collapse;
 padding:10px;
 border-bottom:1px solid #ddd;
 text-align:left;
+}
+.styled-table th{
+  position: sticky;
+  top: 0;
+  background: rgb(163, 22, 100);
+  z-index: 1;
 }
 
 .role-form{

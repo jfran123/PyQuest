@@ -19,9 +19,9 @@
         <a href="/logout">Logout</a>
   </div>
 </nav>
-
+{% set usr_name = session["user"].capitalize() %}
 <section class="dashboard">
-  <h2>Welcome {{ name }}</h2>
+  <h2>Welcome {{ usr_name }}</h2>
     <p>Here's your teacher dashboard. Manage problems, view stats, and oversee the PyQuest universe.</p>
   <div class="stats">
     <div class="card">

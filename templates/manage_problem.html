@@ -78,6 +78,8 @@
 
 </div>
 <!-- Display flashed messages -->
+ <div><br>
+  <a href="/teacher"><button type="button" class="btn secondary">Back to Dashboard</button></a>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -87,6 +89,7 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
+    </div>
 </section>
 <footer>
   © 2026 PyQuest — Cyber Learning Arcade

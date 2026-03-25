@@ -1,6 +1,5 @@
 from flask import Flask,flash, jsonify, render_template, request, redirect, session
 import sqlite3
-import os
 from judge import run_code
 
 app = Flask(__name__)
