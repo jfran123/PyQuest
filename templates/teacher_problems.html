@@ -21,18 +21,18 @@
 </nav>
 
 <section class="auth-container">
-  <div class="auth-box">
+  <div class="auth-box" style="width: 60%;">
 <h2>Add Coding Problem</h2>
 
 <form method="POST" action="/add_problem">
 
 <div class="input-group">
         <label>Title</label>
-<input type="text" name="title">
+<input placeholder="Challenge name to be displayed. Ex: Factorial of a Number" type="text" name="title">
 </div>
 <div class="input-group">
         <label>Description</label>
-        <textarea name="description" style="width:100%; height:100px;"></textarea>
+        <textarea placeholder="Detailed description of the challenge" name="description" style="width:100%; height:100px;"></textarea>
 </div>
 <div class="input-group">
         <label>Level</label>
@@ -44,11 +44,11 @@
       </div>
 <div class="input-group">
         <label>Test Case Input</label>
-        <input type="text" name="input" required>
+        <input placeholder="Sample test input" type="text" name="input" required>
 </div>
 <div class="input-group">
         <label>Expected Output</label>
-        <input type="text" name="output" required>
+        <input placeholder="Expected output for the test case" type="text" name="output" required>
 </div>
 <button type="submit" class="btn primary" style="width:50%;">Save</button>
 <a href="/teacher"><button type="button" class="btn secondary">Back</button></a>

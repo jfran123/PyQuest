@@ -22,14 +22,14 @@
 {% set usr_name = session["user"].capitalize() %}
 <section class="dashboard">
   <h2>Welcome {{ usr_name }}</h2>
-    <p>Here's your teacher dashboard. Manage problems, view stats, and oversee the PyQuest universe.</p>
+    <p>Here's your Instructor dashboard. Manage Challenges and oversee the Analytics.</p>
   <div class="stats">
     <div class="card">
       <a href="{{ url_for('teacher_problems') }}" style="text-decoration: none;"><h3>⚡ Add new Challenge</h3></a>
     </div>
 
     <div class="card">
-      <a href="/leaderboard" style="text-decoration: none;"><h3>🏆 Leader Board</h3></a>    
+      <a href="{{ url_for('teacher_analytics') }}" style="text-decoration: none;"><h3>🏆 Analytics</h3></a>    
     </div>
 
     <div class="card">
