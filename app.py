@@ -1,16 +1,21 @@
 from flask import Flask,flash, jsonify, render_template, request, redirect, session
 import sqlite3
 from judge import run_code
+from datetime import date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "pyquest_secret_key"
 
 def db():
-    return sqlite3.connect("database.db")
+    conn = sqlite3.connect("database.db", timeout=20, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")  # ← Fix 2: WAL mode
+    return conn
 
 # Home Page
 @app.route("/")
 def home():
+    # upgrade_db()
+   # seed_badges()
     return render_template("Index.html")
 
 # REGISTER
@@ -39,7 +44,7 @@ def register():
 
     conn.close()
 
-    return redirect("/")
+    return redirect("/login")
 
 # Login
 @app.route("/login", methods=["POST","GET"])
@@ -52,7 +57,7 @@ def login():
 
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE email=? OR fullname=? AND password=?", (email.lower(), email.lower(), password))
+    c.execute("SELECT * FROM users WHERE (email=? OR fullname=?)" " AND password=?", (email.lower(), email.lower(), password))
     user = c.fetchone()
     conn.close()
 
@@ -66,7 +71,7 @@ def login():
         elif user[4] == "teacher":
             return redirect("/teacher")
         else:
-            flash('You were successfully logged in', 'success')
+            # flash('You were successfully logged in', 'success')
             return redirect("/dashboard")
     else:
         return render_template("Login.html", error="Invalid Email or Password")
@@ -79,8 +84,68 @@ def logout():
 # Dashboard
 @app.route("/dashboard")
 def dashboard():
+    conn = db()
+    c = conn.cursor()
+    # Get user stats
+    c.execute("""
+    SELECT xp, level, current_streak, longest_streak 
+    FROM users WHERE id=?
+    """, (session["user_id"],))
+
+    xp, level, streak, longest = c.fetchone()
+
+    xp_needed = level * 100
+    current_level_xp = xp % 100
+
+    progress = int((current_level_xp / 100) * 100)
+   # Get badges
+    c.execute("""
+    SELECT b.name FROM user_badges ub
+    JOIN badges b ON ub.badge_id = b.id
+    WHERE ub.user_id=?
+    """, (session["user_id"],))
+
+    badges = [row[0] for row in c.fetchall()]
+
+    # 🎯 DAILY CHALLENGE
+    today = date.today()
+
+    c.execute("""
+        SELECT dc.id, dc.title, dc.problem_id 
+        FROM daily_challenges dc
+        WHERE dc.date=?
+    """, (today,))
+    challenge = c.fetchone()
+
+    completed = False
+
+    if challenge:
+        challenge_id = challenge[0]
+
+        c.execute("""
+            SELECT completed FROM user_daily_status
+            WHERE user_id=? AND challenge_id=?
+        """, (session["user_id"], challenge_id))
+
+        result = c.fetchone()
+        completed = result and result[0] == 1
+
+    conn.close()
+
     if "user" in session:
-        return render_template("dashboard.html", name=session["user"],error="")
+        
+        return render_template("dashboard.html",
+                                name=session["user"],
+                                xp=xp,
+                                level=level,
+                                streak=streak,
+                                longest=longest,
+                                badges=badges,
+                                progress=progress,
+                                current_level_xp=current_level_xp,
+                                challenge=challenge,
+                                completed=completed
+                                )
     return redirect("/")
 
 # Admin Dashboard
@@ -127,7 +192,67 @@ def update_role(uid):
     conn.close()
     flash("User role updated successfully!", "success")
     return redirect("/admin/users")
+# Admin Delete User
+@app.route("/admin/delete_user/<int:uid>")
+def delete_user(uid):
 
+    if session["role"] != "admin":
+        return "Unauthorized"
+
+    conn = db()
+    c = conn.cursor()
+
+    c.execute(
+    "DELETE FROM users WHERE id=?",
+    (uid,)
+    )
+
+    conn.commit()
+    conn.close()
+    flash("User deleted successfully!", "success")
+    return redirect("/admin/users")
+
+# Admin Daily Challenge Management
+@app.route("/admin/daily_challenge", methods=["GET", "POST"])
+def admin_daily_challenge():
+    if session.get("role") != "admin":
+        return "Access denied"
+
+    conn = db()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        problem_id = request.form["problem_id"]
+        title = request.form["title"]
+
+        # Remove existing challenge for today
+        c.execute("DELETE FROM daily_challenges WHERE date = DATE('now')")
+
+        # Insert new one
+        c.execute("""
+            INSERT INTO daily_challenges (title, problem_id, date)
+            VALUES (?, ?, DATE('now'))
+        """, (title, problem_id))
+
+        conn.commit()
+
+    # Fetch problems for dropdown
+    c.execute("SELECT id, title FROM problems")
+    problems = c.fetchall()
+
+    # Get today's challenge
+    c.execute("""
+        SELECT title, problem_id FROM daily_challenges 
+        WHERE date = DATE('now')
+    """)
+    today_challenge = c.fetchone()
+
+    conn.close()
+
+    return render_template("admin_challenge.html",
+        problems=problems,
+        today_challenge=today_challenge
+    )
 # Teacher Dashboard
 @app.route("/teacher")
 def teacher():
@@ -163,8 +288,8 @@ def add_problem():
     c = conn.cursor()
 
     c.execute(
-        "INSERT INTO problems(title,description,level) VALUES(?,?,?)",
-        (title,desc,level)
+        "INSERT INTO problems(title,description,level,teacher_id) VALUES(?,?,?,?)",
+        (title,desc,level,session["user_id"])
     )
 
     pid = c.lastrowid
@@ -177,7 +302,7 @@ def add_problem():
     conn.commit()
     conn.close()
     flash("Problem added successfully!", "success")
-    return redirect("/teacher")
+    return redirect("/manage_problems")
 # Teacher Manage Problems
 @app.route("/manage_problems")
 def manage_problems():
@@ -300,62 +425,47 @@ def problem(pid):
     return render_template("problem.html", problem=problem, example=example)
 
 
-# Submit Problem
+# ── submit route: ONE connection for the entire request ──
+
 @app.route("/submit/<int:pid>", methods=["POST"])
 def submit(pid):
-
     if "user" not in session:
         return redirect("/")
 
     code = request.form["code"]
 
-    conn = sqlite3.connect("database.db")
+    conn = db()                          # ← single connection
     c = conn.cursor()
 
-    c.execute("SELECT input, expected_output FROM testcases WHERE problem_id=?", (pid,))
-    tests = c.fetchall()
-    c.execute("select level from problems where id=?", (pid,))
-    level = c.fetchone()[0]
-    point=0
-    match level:
-        case 0:
-            point = 10
-        case 1:
-            point = 20
-        case 2:
-            point = 30
-        case _:
-            point = 0
-    
-    passed = 0
+    try:
+        c.execute("SELECT input, expected_output FROM testcases WHERE problem_id=?", (pid,))
+        tests = c.fetchall()
+        c.execute("SELECT level FROM problems WHERE id=?", (pid,))
+        level = c.fetchone()[0]
 
-    for test in tests:
+        point = {0: 10, 1: 20, 2: 30}.get(level, 0)
 
-        inp = test[0]
-        expected = test[1]
-
-        output = run_code(code, inp)
-
-        if output == expected:
-            passed += 1
-
-    if passed == len(tests):
-        result = "Correct"
-        c.execute(
-            "UPDATE users SET points = points + {0} WHERE email=?", (point, session["user"])
+        passed = sum(
+            1 for inp, expected in tests
+            if run_code(code, inp) == expected
         )
-    else:
-        result = "Wrong"
-    # Save submission
-    c.execute(
-        "INSERT INTO submissions(user,problem_id,code,result) VALUES(?,?,?,?)",
-        (session["user"], pid, code, result)
-    )
-    conn.commit()
-    conn.close()
+
+        if passed == len(tests):
+            result = "Correct"
+            c.execute("UPDATE users SET points = points + ? WHERE id=?", (point, session["user_id"]))
+            on_successful_submission(session["user_id"], pid, c)  # ← passes cursor
+        else:
+            result = "Wrong"
+
+        c.execute(
+            "INSERT INTO submissions(user, problem_id, code, result) VALUES(?,?,?,?)",
+            (session["user_id"], pid, code, result)
+        )
+        conn.commit()                    # ← single commit at the end
+    finally:
+        conn.close()                     # ← always closes even on error
 
     return render_template("result.html", result=result)
-
 
 
 # Run Code
@@ -371,6 +481,30 @@ def run():
 
     return {"output": output}
 
+@app.route("/teacher/analytics")
+def teacher_analytics():
+
+    teacher_id = session["user_id"]
+
+    conn = sqlite3.connect("database.db")
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT 
+        problems.title,
+        COUNT(DISTINCT submissions.user) as attempts,
+        SUM(CASE WHEN submissions.result='Correct' THEN 1 ELSE 0 END) as success
+    FROM problems
+    LEFT JOIN submissions ON problems.id = submissions.problem_id
+    WHERE problems.teacher_id=?
+    GROUP BY problems.id
+    """, (teacher_id,))
+
+    data = c.fetchall()
+    conn.close()
+
+    return render_template("teacher_analytics.html", data=data)
+
 # Leaderboard
 @app.route("/leaderboard")
 def leaderboard():
@@ -378,7 +512,7 @@ def leaderboard():
     conn = db()
     c = conn.cursor()
 
-    c.execute("SELECT fullname, points FROM users where role='student' ORDER BY points DESC")
+    c.execute("SELECT fullname, points,level FROM users where role='student' ORDER BY points DESC")
     users = c.fetchall()
 
     conn.close()
@@ -438,5 +572,180 @@ def progress():
         solved_list=solved_list
     )
 
+
+#Streak System
+def update_streak(user_id,c):
+    
+
+    c.execute("SELECT last_active, current_streak, longest_streak FROM users WHERE id=?", (user_id,))
+    last_active, current, longest = c.fetchone()
+
+    today = date.today()
+
+    if last_active:
+        last_active = date.fromisoformat(last_active)
+
+    if last_active == today:
+        return
+
+    if last_active == today - timedelta(days=1):
+        current += 1
+    else:
+        current = 1
+
+    longest = max(longest, current)
+
+    c.execute("""
+        UPDATE users 
+        SET last_active=?, current_streak=?, longest_streak=? 
+        WHERE id=?
+    """, (today, current, longest, user_id))
+
+   
+# XP System
+def add_xp(user_id, amount,c):
+   
+    c.execute("SELECT xp FROM users WHERE id=?", (user_id,))
+    xp = c.fetchone()[0]
+
+    xp += amount
+    level = xp // 100 + 1
+
+    c.execute("UPDATE users SET xp=?, level=? WHERE id=?", (xp, level, user_id))
+
+    
+# Badge System
+BADGES = [
+    ("First Solve", "Solve your first problem"),
+    ("5 Day Streak", "Maintain a 5 day streak"),
+    ("XP 100", "Earn 100 XP"),
+]
+# Seed badges into database
+def seed_badges():
+    conn = db()
+    c = conn.cursor()
+
+    for name, desc in BADGES:
+        c.execute("INSERT OR IGNORE INTO badges (name, description) VALUES (?, ?)", (name, desc))
+
+    conn.commit()
+    conn.close()
+# Badge Checker
+def check_badges(user_id, c):
+    
+
+    c.execute("""
+        SELECT problems_solved, current_streak, xp 
+        FROM users WHERE id=?
+    """, (user_id,))
+    
+    solved, streak, xp = c.fetchone()
+
+    rules = [
+        ("First Solve", solved >= 1),
+        ("5 Day Streak", streak >= 5),
+        ("XP 100", xp >= 100),
+    ]
+
+    for name, condition in rules:
+        if condition:
+            c.execute("SELECT id FROM badges WHERE name=?", (name,))
+            badge_id = c.fetchone()[0]
+
+            c.execute("""
+                INSERT OR IGNORE INTO user_badges(user_id, badge_id, earned_at)
+                VALUES (?, ?, DATE('now'))
+            """, (user_id, badge_id))
+
+   
+# Daily Challenge System
+def check_daily_challenge(user_id, problem_id, c):
+    today = date.today()
+
+    c.execute("""
+        SELECT id FROM daily_challenges 
+        WHERE date=? AND problem_id=?
+    """, (today, problem_id))
+
+    challenge = c.fetchone()
+
+    if challenge:
+        challenge_id = challenge[0]
+
+        c.execute("""
+            INSERT OR REPLACE INTO user_daily_status 
+            (user_id, challenge_id, completed)
+            VALUES (?, ?, 1)
+        """, (user_id, challenge_id))
+
+        add_xp(user_id, 20,c)
+
+   
+# On successful submission, update stats and check gamification rewards 
+def on_successful_submission(user_id, problem_id,c):
+   
+
+    # Increase solved count
+    c.execute("""
+        UPDATE users 
+        SET problems_solved = problems_solved + 1 
+        WHERE id=?
+    """, (user_id,))
+    
+
+    # Gamification pipeline
+    update_streak(user_id,c)
+    add_xp(user_id, 10,c)
+    check_daily_challenge(user_id, problem_id,c)
+    check_badges(user_id,c)
+# Start Challenge
+@app.route("/start")
+def start():
+    from datetime import date
+
+    user_id = session["user_id"]
+    conn = db()
+    c = conn.cursor()
+
+    today = date.today()
+
+    # # 1. Try daily challenge
+    # c.execute("""
+    #     SELECT problem_id FROM daily_challenges WHERE date=?
+    # """, (today,))
+    # challenge = c.fetchone()
+
+    # if challenge:
+    #     conn.close()
+    #     return redirect(f"/problem/{challenge[0]}")
+
+    # 2. Smart fallback
+    c.execute("SELECT level FROM users WHERE id=?", (user_id,))
+    level = c.fetchone()[0]
+
+    if level <= 3:       # User level determines problem difficulty
+        difficulty = 0   #"easy" this was originally 1 but we have 0,1,2 as levels
+    elif level <= 6:
+        difficulty = 1   #"medium"
+    else:
+        difficulty = 2   #"hard"
+
+    # 3. Avoid solved problems
+    c.execute("""
+        SELECT id FROM problems 
+        WHERE level=? AND id NOT IN (
+            SELECT problem_id FROM submissions WHERE user=? AND result='Correct'
+        )
+        ORDER BY RANDOM() LIMIT 1
+    """, (difficulty, user_id))
+
+    problem = c.fetchone()
+    conn.close()
+
+    if problem:
+        return redirect(f"/problem/{problem[0]}")
+    else:
+        return "You're out of problems in this level!"
+    
 if __name__ == "__main__":
     app.run(debug=True)
