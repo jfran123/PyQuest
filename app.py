@@ -315,6 +315,37 @@ def manage_problems():
     conn.close()
 
     return render_template("manage_problem.html", problems=problems)
+@app.route("/teacher/testcases/<int:pid>", methods=["GET"])
+def get_testcase(pid):
+    conn = db()
+    c = conn.cursor()
+    if request.args.get('format') == 'json':
+        tcs = c.execute("SELECT input, expected_output FROM testcases WHERE problem_id=?", (pid,)).fetchall()
+        conn.close()
+        return jsonify({"testcases": [{"input": t[0], "output": t[1]} for t in tcs]})
+    return render_template('manage_problem.html', ...)
+    # c.execute(
+    #     "SELECT input, expected_output FROM testcases WHERE problem_id=?",
+    #     (pid,)
+    # )
+    # test = c.fetchone()
+    
+    #return jsonify(test)
+# Teacher Save Testcases
+@app.route('/teacher/testcases/<int:problem_id>', methods=['POST'])
+def save_testcases(problem_id):
+    conn = db()
+    c = conn.cursor()
+    data = request.get_json()
+    testcases = data.get('testcases', [])
+    c.execute("DELETE FROM testcases WHERE problem_id=?", (problem_id,))
+    for tc in testcases:
+        c.execute("INSERT INTO testcases (problem_id, input, expected_output) VALUES (?,?,?)",
+                   (problem_id, tc['input'], tc['output']))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
 # Teacher View/Edit Problem
 @app.route("/teacher/edit_problem/<int:pid>", methods=["POST"])
 def edit_problem(pid):
