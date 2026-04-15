@@ -3,6 +3,7 @@ import sqlite3
 from judge import run_code
 from datetime import date, timedelta
 from flask_toastr import Toastr
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "pyquest_secret_key"
@@ -93,15 +94,44 @@ def login():
             return redirect("/dashboard")
     else:
         return render_template("Login.html", error="Invalid Email or Password")
+# Decorator to protect routes
+# def login_required(f):
+#     @wraps(f)
+#     def wrapper(*args, **kwargs):
+#         if "user" not in session:
+#             return redirect("/login")
+#         return f(*args, **kwargs)
+#     return wrapper
+# Decorator for role-based access
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            # Not logged in
+            if "user" not in session:
+                return redirect("/login")
+
+            # Role check
+            user_role = session.get("role")
+
+            if user_role not in roles:
+                # return "Unauthorized", 403  # or redirect("/")
+                return redirect("/login")
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 # Logout
 @app.route("/logout")
 def logout():
-    session.pop("user", None)
-    return redirect("/")
+    # session.pop("user", None)
+    session.clear()  # Clear entire session
+    return redirect("/login")
 
 # Dashboard
 @app.route("/dashboard")
+@role_required("student")
 def dashboard():
+
     conn = db()
     c = conn.cursor()
     # Get user stats
@@ -176,17 +206,17 @@ def dashboard():
 
 # Admin Dashboard
 @app.route("/admin")
+@role_required("admin")
 def admin():
     admin_name = session["user"].capitalize()
-    if "user" in session and session["role"].lower() == "admin":
-        return render_template("admin.html", name=admin_name)
-    return redirect("/")
+    return render_template("admin.html", name=admin_name)
+    # if "user" in session and session["role"].lower() == "admin":
+    #     return render_template("admin.html", name=admin_name)
+    # return redirect("/")
 # Admin Users View
 @app.route("/admin/users")
+@role_required("admin")
 def admin_users():
-
-    if session["role"] != "admin":
-        return "Unauthorized"
 
     conn = db()
     c = conn.cursor()
@@ -199,11 +229,8 @@ def admin_users():
     return render_template("admin_users.html", users=users)
 # Admin Update UserRole
 @app.route("/admin/update_role/<int:uid>", methods=["POST"])
+@role_required("admin")
 def update_role(uid):
-
-    if session["role"] != "admin":
-        return "Unauthorized"
-
     new_role = request.form["role"]
 
     conn = db()
@@ -220,11 +247,8 @@ def update_role(uid):
     return redirect("/admin/users")
 # Admin Delete User
 @app.route("/admin/delete_user/<int:uid>")
+@role_required("admin")
 def delete_user(uid):
-
-    if session["role"] != "admin":
-        return "Unauthorized"
-
     conn = db()
     c = conn.cursor()
 
@@ -240,10 +264,8 @@ def delete_user(uid):
 
 # Admin Daily Challenge Management
 @app.route("/admin/daily_challenge", methods=["GET", "POST"])
+@role_required("admin")
 def admin_daily_challenge():
-    if session.get("role") != "admin":
-        return "Access denied"
-
     conn = db()
     c = conn.cursor()
 
@@ -281,13 +303,13 @@ def admin_daily_challenge():
     )
 # Teacher Dashboard
 @app.route("/teacher")
+@role_required("teacher")
 def teacher():
-
-    if "user" in session and session["role"] == "teacher":
-        return render_template("teacher.html", name=session["user"])
-    return redirect("/")
+    return render_template("teacher.html", name=session["user"])
+    
 # Teacher Problems View
 @app.route("/teacher/problems")
+@role_required("teacher")
 def teacher_problems():
 
     conn = db()
@@ -302,6 +324,7 @@ def teacher_problems():
 
 # TeacherAdd Problem
 @app.route("/add_problem", methods=["POST"])
+@role_required("teacher")
 def add_problem():
 
     title = request.form["title"]
@@ -334,6 +357,7 @@ def add_problem():
     return redirect("/manage_problems")
 # Teacher Manage Problems
 @app.route("/manage_problems")
+@role_required("teacher")
 def manage_problems():
     conn = db()
     c = conn.cursor()
@@ -345,6 +369,7 @@ def manage_problems():
 
     return render_template("manage_problem.html", problems=problems)
 @app.route("/teacher/testcases/<int:pid>", methods=["GET"])
+@role_required("teacher")
 def get_testcase(pid):
     conn = db()
     c = conn.cursor()
@@ -377,6 +402,7 @@ def save_testcases(problem_id):
 
 # Teacher View/Edit Problem
 @app.route("/teacher/edit_problem/<int:pid>", methods=["POST"])
+@role_required("teacher")
 def edit_problem(pid):
 
     title = request.form["title"]
@@ -404,6 +430,7 @@ def edit_problem(pid):
     return redirect("/manage_problems")
 # Teacher Edit Problem
 @app.route("/teacher/update_problem/<int:id>", methods=["POST"])
+@role_required("teacher")
 def update_problem(id):
 
     if session.get("role") != "teacher":
@@ -429,6 +456,7 @@ def update_problem(id):
     return redirect("/manage_problems")
 # Teacher Delete Problem
 @app.route("/teacher/delete_problem/<int:id>")
+@role_required("teacher")
 def delete_problem(id):
 
     if session.get("role") != "teacher":
@@ -488,9 +516,8 @@ def problem(pid):
 # ── submit route: ONE connection for the entire request ──
 
 @app.route("/submit/<int:pid>", methods=["POST"])
+@role_required("student")
 def submit(pid):
-    if "user" not in session:
-        return redirect("/")
 
     code = request.form["code"]
 
@@ -546,6 +573,7 @@ def submit(pid):
 
 # Run Code
 @app.route("/run", methods=["POST"])
+@role_required("student")
 def run():
     # print(request.form["code"])
     data = request.get_json()
@@ -583,6 +611,7 @@ def teacher_analytics():
 
 # Leaderboard
 @app.route("/leaderboard")
+@role_required("student","admin")
 def leaderboard():
 
     conn = db()
