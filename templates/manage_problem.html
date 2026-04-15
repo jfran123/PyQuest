@@ -30,6 +30,8 @@
     overflow: hidden;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     background: #fff;
+    overflow-y: auto;
+    scrollbar-width: none;
   }
 
   .styled-table {
@@ -320,6 +322,9 @@
   .btn-save-tc:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-save-tc.saving { opacity: 0.7; }
 </style>
+ {{ toastr.include_jquery() }}
+    {{ toastr.include_toastr_css() }}
+    {{ toastr.message() }}
 </head>
 <body>
 
@@ -329,11 +334,11 @@
 <nav>
   <h1>PyQuest</h1>
   <div>
-    <a href="/">Home</a>
+    <!-- <a href="/">Home</a> -->
     <a href="/logout">Logout</a>
   </div>
 </nav>
-
+ {{ toastr.include_toastr_js() }}
 <section class="dashboard">
   <div class="page-header">
     <h2>Manage Problems</h2>
@@ -400,13 +405,13 @@
   <div class="bottom-bar">
     <a href="/teacher" class="btn secondary">← Back to Dashboard</a>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
+    <!-- {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
           <div class="alert alert-{{ category }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
-    {% endwith %}
+    {% endwith %} -->
   </div>
 </section>
 

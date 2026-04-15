@@ -2,10 +2,12 @@ from flask import Flask,flash, jsonify, render_template, request, redirect, sess
 import sqlite3
 from judge import run_code
 from datetime import date, timedelta
+from flask_toastr import Toastr
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "pyquest_secret_key"
-
+toastr=Toastr(app)
 def db():
     conn = sqlite3.connect("database.db", timeout=20, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")  # ← Fix 2: WAL mode
@@ -19,9 +21,11 @@ def home():
     return render_template("Index.html")
 
 # REGISTER
-@app.route("/register", methods=["POST"])
+@app.route("/register", methods=["POST","GET"])
 def register():
-
+    if request.method == "GET":
+        return render_template("register.html",error="")
+    
     fullname = request.form["fullname"]
     email = request.form["email"]
     password = request.form["password"]
@@ -31,6 +35,10 @@ def register():
     c = conn.cursor()
 
     try:
+        c.execute("SELECT * FROM users WHERE email=? or fullname=?", (email.lower(), fullname.lower()))
+        if c.fetchone():
+            flash("Email or username already exists", "error")
+            return render_template("Register.html", error="Email or username already exists")
 
         c.execute(
             "INSERT INTO users(fullname,email,password,role) VALUES(?,?,?,?)",
@@ -45,7 +53,18 @@ def register():
     conn.close()
 
     return redirect("/login")
-
+@app.route('/check-email')
+def check_email():
+    email = request.args.get('email')
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE email=?", (email.lower(),))
+    
+    if c.fetchone():
+        conn.close()
+        return jsonify({"exists": True})
+    conn.close()
+    return jsonify({"exists": False})
 # Login
 @app.route("/login", methods=["POST","GET"])
 def login():
@@ -75,15 +94,44 @@ def login():
             return redirect("/dashboard")
     else:
         return render_template("Login.html", error="Invalid Email or Password")
+# Decorator to protect routes
+# def login_required(f):
+#     @wraps(f)
+#     def wrapper(*args, **kwargs):
+#         if "user" not in session:
+#             return redirect("/login")
+#         return f(*args, **kwargs)
+#     return wrapper
+# Decorator for role-based access
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            # Not logged in
+            if "user" not in session:
+                return redirect("/login")
+
+            # Role check
+            user_role = session.get("role")
+
+            if user_role not in roles:
+                # return "Unauthorized", 403  # or redirect("/")
+                return redirect("/login")
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 # Logout
 @app.route("/logout")
 def logout():
-    session.pop("user", None)
-    return redirect("/")
+    # session.pop("user", None)
+    session.clear()  # Clear entire session
+    return redirect("/login")
 
 # Dashboard
 @app.route("/dashboard")
+@role_required("student")
 def dashboard():
+
     conn = db()
     c = conn.cursor()
     # Get user stats
@@ -99,14 +147,22 @@ def dashboard():
 
     progress = int((current_level_xp / 100) * 100)
    # Get badges
+    # c.execute("""
+    # SELECT b.name FROM user_badges ub
+    # JOIN badges b ON ub.badge_id = b.id
+    # WHERE ub.user_id=?
+    # """, (session["user_id"],))
+
+    # badges = [row[0] for row in c.fetchall()]
     c.execute("""
-    SELECT b.name FROM user_badges ub
-    JOIN badges b ON ub.badge_id = b.id
-    WHERE ub.user_id=?
+    SELECT b.name,
+        CASE WHEN ub.user_id IS NOT NULL THEN 1 ELSE 0 END as unlocked
+    FROM badges b
+    LEFT JOIN user_badges ub
+    ON b.id = ub.badge_id AND ub.user_id=?
     """, (session["user_id"],))
 
-    badges = [row[0] for row in c.fetchall()]
-
+    badges = c.fetchall()
     # 🎯 DAILY CHALLENGE
     today = date.today()
 
@@ -150,17 +206,17 @@ def dashboard():
 
 # Admin Dashboard
 @app.route("/admin")
+@role_required("admin")
 def admin():
     admin_name = session["user"].capitalize()
-    if "user" in session and session["role"].lower() == "admin":
-        return render_template("admin.html", name=admin_name)
-    return redirect("/")
+    return render_template("admin.html", name=admin_name)
+    # if "user" in session and session["role"].lower() == "admin":
+    #     return render_template("admin.html", name=admin_name)
+    # return redirect("/")
 # Admin Users View
 @app.route("/admin/users")
+@role_required("admin")
 def admin_users():
-
-    if session["role"] != "admin":
-        return "Unauthorized"
 
     conn = db()
     c = conn.cursor()
@@ -173,11 +229,8 @@ def admin_users():
     return render_template("admin_users.html", users=users)
 # Admin Update UserRole
 @app.route("/admin/update_role/<int:uid>", methods=["POST"])
+@role_required("admin")
 def update_role(uid):
-
-    if session["role"] != "admin":
-        return "Unauthorized"
-
     new_role = request.form["role"]
 
     conn = db()
@@ -194,11 +247,8 @@ def update_role(uid):
     return redirect("/admin/users")
 # Admin Delete User
 @app.route("/admin/delete_user/<int:uid>")
+@role_required("admin")
 def delete_user(uid):
-
-    if session["role"] != "admin":
-        return "Unauthorized"
-
     conn = db()
     c = conn.cursor()
 
@@ -214,10 +264,8 @@ def delete_user(uid):
 
 # Admin Daily Challenge Management
 @app.route("/admin/daily_challenge", methods=["GET", "POST"])
+@role_required("admin")
 def admin_daily_challenge():
-    if session.get("role") != "admin":
-        return "Access denied"
-
     conn = db()
     c = conn.cursor()
 
@@ -226,14 +274,14 @@ def admin_daily_challenge():
         title = request.form["title"]
 
         # Remove existing challenge for today
-        c.execute("DELETE FROM daily_challenges WHERE date = DATE('now')")
+        c.execute("DELETE FROM daily_challenges WHERE date = DATE('now','localtime')")
 
         # Insert new one
         c.execute("""
             INSERT INTO daily_challenges (title, problem_id, date)
-            VALUES (?, ?, DATE('now'))
+            VALUES (?, ?, DATE('now','localtime'))
         """, (title, problem_id))
-
+        flash('Daily challenge updated successfully!', 'success')
         conn.commit()
 
     # Fetch problems for dropdown
@@ -248,20 +296,20 @@ def admin_daily_challenge():
     today_challenge = c.fetchone()
 
     conn.close()
-
+    
     return render_template("admin_challenge.html",
         problems=problems,
         today_challenge=today_challenge
     )
 # Teacher Dashboard
 @app.route("/teacher")
+@role_required("teacher")
 def teacher():
-
-    if "user" in session and session["role"] == "teacher":
-        return render_template("teacher.html", name=session["user"])
-    return redirect("/")
+    return render_template("teacher.html", name=session["user"])
+    
 # Teacher Problems View
 @app.route("/teacher/problems")
+@role_required("teacher")
 def teacher_problems():
 
     conn = db()
@@ -276,13 +324,14 @@ def teacher_problems():
 
 # TeacherAdd Problem
 @app.route("/add_problem", methods=["POST"])
+@role_required("teacher")
 def add_problem():
 
     title = request.form["title"]
     desc = request.form["description"]
     level = request.form["level"]
-    inp = request.form["input"]
-    out = request.form["output"]
+    inputs = request.form.getlist("input[]")
+    outputs = request.form.getlist("output[]")
 
     conn = db()
     c = conn.cursor()
@@ -294,10 +343,13 @@ def add_problem():
 
     pid = c.lastrowid
 
-    c.execute(
-        "INSERT INTO testcases(problem_id,input,expected_output) VALUES(?,?,?)",
-        (pid,inp,out)
-    )
+    for inp, out in zip(inputs, outputs):
+        if inp.strip() and out.strip():
+            c.execute(
+                "INSERT INTO testcases(problem_id,input,expected_output) VALUES(?,?,?)",
+                (pid, inp.strip(), out.strip())
+            )
+
 
     conn.commit()
     conn.close()
@@ -305,6 +357,7 @@ def add_problem():
     return redirect("/manage_problems")
 # Teacher Manage Problems
 @app.route("/manage_problems")
+@role_required("teacher")
 def manage_problems():
     conn = db()
     c = conn.cursor()
@@ -316,6 +369,7 @@ def manage_problems():
 
     return render_template("manage_problem.html", problems=problems)
 @app.route("/teacher/testcases/<int:pid>", methods=["GET"])
+@role_required("teacher")
 def get_testcase(pid):
     conn = db()
     c = conn.cursor()
@@ -348,6 +402,7 @@ def save_testcases(problem_id):
 
 # Teacher View/Edit Problem
 @app.route("/teacher/edit_problem/<int:pid>", methods=["POST"])
+@role_required("teacher")
 def edit_problem(pid):
 
     title = request.form["title"]
@@ -375,6 +430,7 @@ def edit_problem(pid):
     return redirect("/manage_problems")
 # Teacher Edit Problem
 @app.route("/teacher/update_problem/<int:id>", methods=["POST"])
+@role_required("teacher")
 def update_problem(id):
 
     if session.get("role") != "teacher":
@@ -400,6 +456,7 @@ def update_problem(id):
     return redirect("/manage_problems")
 # Teacher Delete Problem
 @app.route("/teacher/delete_problem/<int:id>")
+@role_required("teacher")
 def delete_problem(id):
 
     if session.get("role") != "teacher":
@@ -459,9 +516,8 @@ def problem(pid):
 # ── submit route: ONE connection for the entire request ──
 
 @app.route("/submit/<int:pid>", methods=["POST"])
+@role_required("student")
 def submit(pid):
-    if "user" not in session:
-        return redirect("/")
 
     code = request.form["code"]
 
@@ -476,15 +532,29 @@ def submit(pid):
 
         point = {0: 10, 1: 20, 2: 30}.get(level, 0)
 
-        passed = sum(
-            1 for inp, expected in tests
-            if run_code(code, inp) == expected
-        )
+        # passed = sum(
+        #     1 for inp, expected in tests
+        #     if run_code(code, inp) == expected
+        # )
+        results = []
+        for inp, expected in tests:
+            output = run_code(code, inp)
+            passed_tc = output.strip() == expected.strip()
+            results.append({
+                "input": inp,
+                "expected": expected,
+                "output": output,
+                "passed": passed_tc,
+            })
+ 
+        all_passed = all(r["passed"] for r in results)
 
-        if passed == len(tests):
+
+        if all_passed:
             result = "Correct"
             c.execute("UPDATE users SET points = points + ? WHERE id=?", (point, session["user_id"]))
             on_successful_submission(session["user_id"], pid, c)  # ← passes cursor
+            flash('Submission successful!', 'success')
         else:
             result = "Wrong"
 
@@ -495,12 +565,15 @@ def submit(pid):
         conn.commit()                    # ← single commit at the end
     finally:
         conn.close()                     # ← always closes even on error
-
-    return render_template("result.html", result=result)
+   
+   
+    return jsonify(results)
+    # return render_template("result.html", result=result)
 
 
 # Run Code
 @app.route("/run", methods=["POST"])
+@role_required("student")
 def run():
     # print(request.form["code"])
     data = request.get_json()
@@ -538,6 +611,7 @@ def teacher_analytics():
 
 # Leaderboard
 @app.route("/leaderboard")
+@role_required("student","admin")
 def leaderboard():
 
     conn = db()
@@ -776,7 +850,8 @@ def start():
     if problem:
         return redirect(f"/problem/{problem[0]}")
     else:
-        return "You're out of problems in this level!"
-    
+        flash("You're out of problems in this level!", "info")
+        return redirect("/dashboard")
+
 if __name__ == "__main__":
     app.run(debug=True)

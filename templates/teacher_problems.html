@@ -6,7 +6,9 @@
 <title>Dashboard | PyQuest</title>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
-
+ {{ toastr.include_jquery() }}
+    {{ toastr.include_toastr_css() }}
+    {{ toastr.message() }}
 </head>
 <body>
 
@@ -19,7 +21,7 @@
        <a href="/logout">Logout</a>
   </div>
 </nav>
-
+{{ toastr.include_toastr_js() }}
 <section class="auth-container">
   <div class="auth-box" style="width: 60%;">
 <h2>Add Coding Problem</h2>
@@ -42,17 +44,69 @@
           <option value="2">Advanced</option>
         </select>
       </div>
-<div class="input-group">
+<!-- <div class="input-group">
         <label>Test Case Input</label>
         <input placeholder="Sample test input" type="text" name="input" required>
 </div>
 <div class="input-group">
         <label>Expected Output</label>
         <input placeholder="Expected output for the test case" type="text" name="output" required>
+</div> -->
+<div class="input-group">
+    <label>Test Cases</label>
+    <small style="color:#888; display:block; margin-bottom:8px;">
+        For multiple inputs, put each on a new line (e.g. <code>1 2 3</code> then <code>1</code>).
+        Use the + button to add more test cases.
+    </small>
+
+    <div id="testcases-container">
+        <div class="testcase-row" style="display:flex; gap:10px; margin-bottom:10px; align-items:flex-start;">
+            <div style="flex:1;">
+                <label style="font-size:12px; color:#aaa;">Input</label>
+                <textarea name="input[]" rows="3" placeholder="e.g.&#10;1 2 3&#10;1" style="width:100%; font-family:monospace;" required></textarea>
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px; color:#aaa;">Expected Output</label>
+                <textarea name="output[]" rows="3" placeholder="e.g.&#10;2" style="width:100%; font-family:monospace;" required></textarea>
+            </div>
+            <button type="button" onclick="removeTestCase(this)" style="margin-top:22px; background:none; border:none; color:#dc3545; font-size:20px; cursor:pointer;">✕</button>
+        </div>
+    </div>
+
+    <button type="button" onclick="addTestCase()" class="btn secondary" style="width:100%; margin-top:4px;">+ Add Test Case</button>
 </div>
 <button type="submit" class="btn primary" style="width:50%;">Save</button>
 <a href="/teacher"><button type="button" class="btn secondary">Back</button></a>
 </form>
+<script>
+function addTestCase() {
+    const container = document.getElementById("testcases-container");
+    const row = document.createElement("div");
+    row.className = "testcase-row";
+    row.style = "display:flex; gap:10px; margin-bottom:10px; align-items:flex-start;";
+    row.innerHTML = `
+        <div style="flex:1;">
+            <label style="font-size:12px; color:#aaa;">Input</label>
+            <textarea name="input[]" rows="3" placeholder="e.g.&#10;1 2 3&#10;1" style="width:100%; font-family:monospace;" required></textarea>
+        </div>
+        <div style="flex:1;">
+            <label style="font-size:12px; color:#aaa;">Expected Output</label>
+            <textarea name="output[]" rows="3" placeholder="e.g.&#10;2" style="width:100%; font-family:monospace;" required></textarea>
+        </div>
+        <button type="button" onclick="removeTestCase(this)" style="margin-top:22px; background:none; border:none; color:#dc3545; font-size:20px; cursor:pointer;">✕</button>
+    `;
+    container.appendChild(row);
+}
+
+function removeTestCase(btn) {
+    const rows = document.querySelectorAll(".testcase-row");
+    if (rows.length === 1) {
+        alert("At least one test case is required.");
+        return;
+    }
+    btn.closest(".testcase-row").remove();
+}
+</script>
 </div>
 </section>
 

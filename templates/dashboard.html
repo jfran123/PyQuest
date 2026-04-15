@@ -139,7 +139,17 @@ hr{
     background: linear-gradient(90deg, #22c55e, #4ade80);
     transition: width 0.5s ease-in-out;
 }
+/* Locked badge */
+.badge.locked {
+    background-color: #ccc;
+    color: #777;
+    filter: grayscale(100%);
+    opacity: 0.6;
+}
     </style>
+      {{ toastr.include_jquery() }}
+    {{ toastr.include_toastr_css() }}
+    {{ toastr.message() }}
 </head>
 
 <body>
@@ -149,9 +159,13 @@ hr{
         <a href="/logout">Logout</a>
   </div>
 </nav>
+  {{ toastr.include_toastr_js() }}
 <div class="container">
      <h1>🚀 Welcome Back, {{ name }} 🎮 </h1>
-  <br>
+  <div style="text-align: right;padding: 10px;font-size: large;">
+        <a href="/leaderboard">🏆 Ranking</a>
+    </div>
+  
     <div class="grid">
 
         <!-- XP -->
@@ -185,7 +199,7 @@ hr{
         {% endif %}
 
     {% else %}
-        <p>No challenge available today</p>
+        <p>No daily challenge available today</p>
     {% endif %}
            <!-- <a href="/start"><button class="btn">Start</button></a> -->
         </div>
@@ -201,24 +215,27 @@ hr{
     <div class="card" style="margin-top:20px;">
         <div class="title">🏆 Badges</div><hr>
 
-        {% for b in badges %}
-            <!-- <span class="badge">{{ b }}</span> -->
-            <span class="badge" style="background-color: {{ loop.cycle('#ff5733', '#33ff57', '#3357ff', '#f333ff') }};">
-        {{ b }}
-    </span>
-        {% endfor %}
+       {% if badges %}
+  {% for badge, unlocked in badges %}
+    
+    <div class="badge {% if not unlocked %}locked{% endif %}" style="background-color: {{ loop.cycle('#ff5733', '#33ff57', '#3357ff', '#f333ff') }};color:white; margin:5px; display:inline-block; padding:10px 15px; border-radius:8px;">
+         {% if not unlocked %} 🔒 {% endif %}
+        {{ badge }}
+    </div>
+
+  {% endfor %}
+{% else %}
+  <span class="no-badges">No badges earned yet</span>
+{% endif %}
        
     </div>
 
     <!-- Navigation -->
-    <div style="margin-top:20px;text-align: center;margin-bottom: 20px;">
-        <a href="/leaderboard">🏆 View Leaderboard</a>
-    </div>
-
+    
 </div>
 
-<!-- <footer>
+<footer>
   © 2026 PyQuest — Cyber Learning Arcade
-</footer> -->
+</footer>
 </body>
 </html>

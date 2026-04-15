@@ -145,7 +145,7 @@ nav a:hover{
   display:flex;
   justify-content:center;
   gap:40px;
-  padding:60px 40px;
+  padding:10px 40px;
   flex-wrap:wrap;
 }
  
@@ -252,7 +252,7 @@ footer{
 
 .dashboard h2{
   font-size:2.5rem;
-  margin-bottom:15px;
+  margin-bottom:35px;
   background:linear-gradient(90deg,var(--purple),var(--coral),var(--blue));
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
@@ -332,13 +332,13 @@ margin-top:20px;
 .problem-section{
 width:45%;
 padding:20px;
-border:1px solid #ddd;
+border:1px solid #4a3434;
 }
 
 .editor-section{
 width:55%;
 padding:20px;
-border:1px solid #ddd;
+border:1px solid #4a3434;
 }
 
 .CodeMirror{
