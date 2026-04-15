@@ -6,7 +6,9 @@
 <title>Dashboard | PyQuest</title>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pyquest.css') }}">
-
+ {{ toastr.include_jquery() }}
+    {{ toastr.include_toastr_css() }}
+    {{ toastr.message() }}
 </head>
 <body>
 
@@ -19,7 +21,7 @@
         <a href="/logout">Logout</a>
   </div>
 </nav>
-
+ {{ toastr.include_toastr_js() }}
 <section class="dashboard">
  <h2>Submission Result</h2>
 

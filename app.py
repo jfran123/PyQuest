@@ -2,10 +2,11 @@ from flask import Flask,flash, jsonify, render_template, request, redirect, sess
 import sqlite3
 from judge import run_code
 from datetime import date, timedelta
+from flask_toastr import Toastr
 
 app = Flask(__name__)
 app.secret_key = "pyquest_secret_key"
-
+toastr=Toastr(app)
 def db():
     conn = sqlite3.connect("database.db", timeout=20, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")  # ← Fix 2: WAL mode
@@ -19,9 +20,11 @@ def home():
     return render_template("Index.html")
 
 # REGISTER
-@app.route("/register", methods=["POST"])
+@app.route("/register", methods=["POST","GET"])
 def register():
-
+    if request.method == "GET":
+        return render_template("register.html",error="")
+    
     fullname = request.form["fullname"]
     email = request.form["email"]
     password = request.form["password"]
@@ -31,6 +34,10 @@ def register():
     c = conn.cursor()
 
     try:
+        c.execute("SELECT * FROM users WHERE email=? or fullname=?", (email.lower(), fullname.lower()))
+        if c.fetchone():
+            flash("Email or username already exists", "error")
+            return render_template("Register.html", error="Email or username already exists")
 
         c.execute(
             "INSERT INTO users(fullname,email,password,role) VALUES(?,?,?,?)",
@@ -45,7 +52,18 @@ def register():
     conn.close()
 
     return redirect("/login")
-
+@app.route('/check-email')
+def check_email():
+    email = request.args.get('email')
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE email=?", (email.lower(),))
+    
+    if c.fetchone():
+        conn.close()
+        return jsonify({"exists": True})
+    conn.close()
+    return jsonify({"exists": False})
 # Login
 @app.route("/login", methods=["POST","GET"])
 def login():
@@ -99,14 +117,22 @@ def dashboard():
 
     progress = int((current_level_xp / 100) * 100)
    # Get badges
+    # c.execute("""
+    # SELECT b.name FROM user_badges ub
+    # JOIN badges b ON ub.badge_id = b.id
+    # WHERE ub.user_id=?
+    # """, (session["user_id"],))
+
+    # badges = [row[0] for row in c.fetchall()]
     c.execute("""
-    SELECT b.name FROM user_badges ub
-    JOIN badges b ON ub.badge_id = b.id
-    WHERE ub.user_id=?
+    SELECT b.name,
+        CASE WHEN ub.user_id IS NOT NULL THEN 1 ELSE 0 END as unlocked
+    FROM badges b
+    LEFT JOIN user_badges ub
+    ON b.id = ub.badge_id AND ub.user_id=?
     """, (session["user_id"],))
 
-    badges = [row[0] for row in c.fetchall()]
-
+    badges = c.fetchall()
     # 🎯 DAILY CHALLENGE
     today = date.today()
 
@@ -226,14 +252,14 @@ def admin_daily_challenge():
         title = request.form["title"]
 
         # Remove existing challenge for today
-        c.execute("DELETE FROM daily_challenges WHERE date = DATE('now')")
+        c.execute("DELETE FROM daily_challenges WHERE date = DATE('now','localtime')")
 
         # Insert new one
         c.execute("""
             INSERT INTO daily_challenges (title, problem_id, date)
-            VALUES (?, ?, DATE('now'))
+            VALUES (?, ?, DATE('now','localtime'))
         """, (title, problem_id))
-
+        flash('Daily challenge updated successfully!', 'success')
         conn.commit()
 
     # Fetch problems for dropdown
@@ -248,7 +274,7 @@ def admin_daily_challenge():
     today_challenge = c.fetchone()
 
     conn.close()
-
+    
     return render_template("admin_challenge.html",
         problems=problems,
         today_challenge=today_challenge
@@ -281,8 +307,8 @@ def add_problem():
     title = request.form["title"]
     desc = request.form["description"]
     level = request.form["level"]
-    inp = request.form["input"]
-    out = request.form["output"]
+    inputs = request.form.getlist("input[]")
+    outputs = request.form.getlist("output[]")
 
     conn = db()
     c = conn.cursor()
@@ -294,10 +320,13 @@ def add_problem():
 
     pid = c.lastrowid
 
-    c.execute(
-        "INSERT INTO testcases(problem_id,input,expected_output) VALUES(?,?,?)",
-        (pid,inp,out)
-    )
+    for inp, out in zip(inputs, outputs):
+        if inp.strip() and out.strip():
+            c.execute(
+                "INSERT INTO testcases(problem_id,input,expected_output) VALUES(?,?,?)",
+                (pid, inp.strip(), out.strip())
+            )
+
 
     conn.commit()
     conn.close()
@@ -476,15 +505,29 @@ def submit(pid):
 
         point = {0: 10, 1: 20, 2: 30}.get(level, 0)
 
-        passed = sum(
-            1 for inp, expected in tests
-            if run_code(code, inp) == expected
-        )
+        # passed = sum(
+        #     1 for inp, expected in tests
+        #     if run_code(code, inp) == expected
+        # )
+        results = []
+        for inp, expected in tests:
+            output = run_code(code, inp)
+            passed_tc = output.strip() == expected.strip()
+            results.append({
+                "input": inp,
+                "expected": expected,
+                "output": output,
+                "passed": passed_tc,
+            })
+ 
+        all_passed = all(r["passed"] for r in results)
 
-        if passed == len(tests):
+
+        if all_passed:
             result = "Correct"
             c.execute("UPDATE users SET points = points + ? WHERE id=?", (point, session["user_id"]))
             on_successful_submission(session["user_id"], pid, c)  # ← passes cursor
+            flash('Submission successful!', 'success')
         else:
             result = "Wrong"
 
@@ -495,8 +538,10 @@ def submit(pid):
         conn.commit()                    # ← single commit at the end
     finally:
         conn.close()                     # ← always closes even on error
-
-    return render_template("result.html", result=result)
+   
+   
+    return jsonify(results)
+    # return render_template("result.html", result=result)
 
 
 # Run Code
@@ -776,7 +821,8 @@ def start():
     if problem:
         return redirect(f"/problem/{problem[0]}")
     else:
-        return "You're out of problems in this level!"
-    
+        flash("You're out of problems in this level!", "info")
+        return redirect("/dashboard")
+
 if __name__ == "__main__":
     app.run(debug=True)
