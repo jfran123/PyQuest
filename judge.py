@@ -18,6 +18,7 @@ def run_code(user_code, input_data=""):
             input=input_data.strip() + "\n",
             capture_output=True,
             text=True,
+            encoding="utf-8", 
             timeout=2
         )
 
