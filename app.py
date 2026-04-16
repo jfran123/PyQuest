@@ -291,7 +291,7 @@ def admin_daily_challenge():
     # Get today's challenge
     c.execute("""
         SELECT title, problem_id FROM daily_challenges 
-        WHERE date = DATE('now')
+        WHERE date = DATE('now','localtime')
     """)
     today_challenge = c.fetchone()
 
